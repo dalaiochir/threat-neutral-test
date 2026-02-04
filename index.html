@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2 үе шаттай үг таних тест</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>2 үе шаттай үг таних тест</h1>
+        <p class="sub">2 зурагнаас зөвийг сонгоно → шууд зөв/буруу feedback → дараагийн асуулт</p>
+      </div>
+      <button id="btnStart" class="btn primary">Эхлэх</button>
+    </header>
+
+    <main class="main">
+      <section id="screenWelcome" class="card">
+        <h2>Заавар</h2>
+        <ol>
+          <li><b>1-р үе шат:</b> заналхийлсэн утгатай үгийг олно (2 зурагнаас 1-ийг сонгоно).</li>
+          <li><b>2-р үе шат:</b> энгийн утгатай үгийг олно (мөн адил).</li>
+          <li>Сонгосны дараа зөв зураг аль байсан нь гарч ирээд дараагийнх руу шилжинэ.</li>
+          <li>Дуусахад нийт хугацаа, зөвийн хувь, зорилтот үр дүнтэй харьцуулалт, мөн таны түүх хадгалагдана.</li>
+        </ol>
+        <div class="row">
+          <div class="pill">Түүх localStorage-д хадгалагдана</div>
+          <div class="pill">CSS + JS (frameworkгүй)</div>
+        </div>
+      </section>
+
+      <section id="screenTest" class="card hidden">
+        <div class="hud">
+          <div class="hud-left">
+            <div class="tag" id="tagStage">Үе шат: -</div>
+            <div class="tag" id="tagProgress">Асуулт: -</div>
+          </div>
+          <div class="hud-right">
+            <div class="timer" id="timer">00:00.000</div>
+          </div>
+        </div>
+
+        <h2 id="promptTitle">Сонгох даалгавар</h2>
+        <p id="promptDesc" class="sub">Доорх 2 зурагнаас зөвийг сонгоно уу.</p>
+
+        <div class="choices" id="choices">
+          <!-- JS inserts two buttons -->
+        </div>
+
+        <div id="feedback" class="feedback hidden"></div>
+
+        <div class="actions">
+          <button id="btnNext" class="btn" disabled>Дараагийнх</button>
+          <button id="btnRestart" class="btn ghost">Дахин эхлэх</button>
+        </div>
+      </section>
+
+      <section id="screenResult" class="card hidden">
+        <h2>Үр дүн</h2>
+
+        <div class="resultGrid">
+          <div class="metric">
+            <div class="label">Нийт хугацаа</div>
+            <div class="value" id="resTime">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Зөвийн хувь</div>
+            <div class="value" id="resAcc">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Зөв хариулт</div>
+            <div class="value" id="resCorrect">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Нийт асуулт</div>
+            <div class="value" id="resTotal">-</div>
+          </div>
+        </div>
+
+        <div class="compare cardInner">
+          <h3>Харьцуулалт</h3>
+          <p id="compareText" class="sub">-</p>
+          <div class="row">
+            <div class="pill" id="benchPill">Benchmark: -</div>
+            <div class="pill" id="bestPill">Таны best: -</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btnStartAgain" class="btn primary">Дахин тест өгөх</button>
+        </div>
+      </section>
+
+      <section id="screenHistory" class="card">
+        <div class="historyHeader">
+          <h2>Тестийн түүх</h2>
+          <div class="row">
+            <button id="btnExport" class="btn">JSON экспорт</button>
+            <button id="btnClearHistory" class="btn danger">Түүх цэвэрлэх</button>
+          </div>
+        </div>
+
+        <div class="tableWrap">
+          <table class="table" id="historyTable">
+            <thead>
+              <tr>
+                <th>Огноо</th>
+                <th>Хугацаа</th>
+                <th>Зөвийн хувь</th>
+                <th>Зөв/Нийт</th>
+                <th>1-р үе (зөв/нийт)</th>
+                <th>2-р үе (зөв/нийт)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6" class="muted">Одоогоор түүх байхгүй байна.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <span class="muted">GitHub → Vercel deploy-д бэлэн (static site)</span>
+    </footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
