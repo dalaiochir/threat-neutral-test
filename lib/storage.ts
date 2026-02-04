@@ -1,48 +1,41 @@
-export type TestResult = {
-  id: string;
-  createdAt: string; // ISO
-  totalMs: number;
-  accuracy: number; // 0..1
-  correct: number;
-  total: number;
-  stageBreakdown: {
-    threat: { correct: number; total: number };
-    neutral: { correct: number; total: number };
-  };
-};
+import { Benchmark, TestResult } from "./types";
+import { DEFAULT_BENCHMARK } from "./data";
 
-export type Baseline = {
-  accuracy: number; // 0..1
-  totalMs: number;
-};
-
-const KEY_HISTORY = "mk_test_history_v1";
-const KEY_BASELINE = "mk_test_baseline_v1";
+const HISTORY_KEY = "tn_history_v1";
+const BENCH_KEY = "tn_benchmark_v1";
 
 export function loadHistory(): TestResult[] {
   if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(KEY_HISTORY);
-  if (!raw) return [];
-  try { return JSON.parse(raw) as TestResult[]; } catch { return []; }
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as TestResult[];
+  } catch {
+    return [];
+  }
 }
 
 export function saveHistory(items: TestResult[]) {
-  localStorage.setItem(KEY_HISTORY, JSON.stringify(items));
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
 }
 
-export function addHistory(result: TestResult) {
-  const items = loadHistory();
-  items.unshift(result);
-  saveHistory(items);
+export function addToHistory(item: TestResult) {
+  const list = loadHistory();
+  list.unshift(item);
+  saveHistory(list.slice(0, 100)); // хамгийн ихдээ 100 бичлэг
 }
 
-export function loadBaseline(): Baseline | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(KEY_BASELINE);
-  if (!raw) return null;
-  try { return JSON.parse(raw) as Baseline; } catch { return null; }
+export function loadBenchmark(): Benchmark {
+  if (typeof window === "undefined") return DEFAULT_BENCHMARK;
+  try {
+    const raw = localStorage.getItem(BENCH_KEY);
+    if (!raw) return DEFAULT_BENCHMARK;
+    return JSON.parse(raw) as Benchmark;
+  } catch {
+    return DEFAULT_BENCHMARK;
+  }
 }
 
-export function saveBaseline(b: Baseline) {
-  localStorage.setItem(KEY_BASELINE, JSON.stringify(b));
+export function saveBenchmark(b: Benchmark) {
+  localStorage.setItem(BENCH_KEY, JSON.stringify(b));
 }

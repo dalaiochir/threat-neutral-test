@@ -1,228 +1,168 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TRIALS } from "@/lib/data";
+import { addToHistory, loadBenchmark } from "@/lib/storage";
+import { Benchmark, Stage, TestResult, Trial } from "@/lib/types";
+import { ProgressHeader } from "@/components/ProgressHeader";
+import { TwoChoiceRound } from "@/components/TwoChoiceRound";
 import { useRouter } from "next/navigation";
 
-import { THREAT_WORDS, NEUTRAL_WORDS } from "@/data/words";
-import ChoiceCard from "@/components/ChoiceCard";
-import ProgressBar from "@/components/ProgressBar";
-import { buildRounds, Round } from "@/lib/quiz";
-import { addHistory, TestResult } from "@/lib/storage";
-
-import styles from "./test.module.css";
-
-type PickState = {
-  pickedId: string | null;
-  revealed: boolean;
-};
-
-type TransitionState = null | { title: string; subtitle?: string };
+function uuid() {
+  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`;
+}
 
 export default function TestPage() {
   const router = useRouter();
 
-  const rounds: Round[] = useMemo(
-    () =>
-      buildRounds({
-        threatWords: THREAT_WORDS,
-        neutralWords: NEUTRAL_WORDS,
-        perStage: 5, // хүсвэл өөрчил
-      }),
-    []
-  );
-
-  const threatTotal = useMemo(
-    () => rounds.filter((x) => x.stage === "THREAT").length,
-    [rounds]
-  );
-  const neutralTotal = useMemo(
-    () => rounds.filter((x) => x.stage === "NEUTRAL").length,
-    [rounds]
-  );
-
-  const stage1EndIndex = threatTotal - 1;
-
-  const [i, setI] = useState(0);
-  const [pick, setPick] = useState<PickState>({ pickedId: null, revealed: false });
-  const [transition, setTransition] = useState<TransitionState>(null);
-
-  const [correctCount, setCorrectCount] = useState(0);
-  const [threatCorrect, setThreatCorrect] = useState(0);
-  const [neutralCorrect, setNeutralCorrect] = useState(0);
-
-  const startRef = useRef<number>(0);
-
-  useEffect(() => {
-    startRef.current = performance.now();
+  const trials = useMemo(() => {
+    // shuffle
+    const copy = [...TRIALS];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
   }, []);
 
-  const total = rounds.length;
-  const r = rounds[i];
+  const [benchmark, setBenchmark] = useState<Benchmark | null>(null);
 
-  function handlePick(chosenId: string) {
-    if (!r) return;
-    if (pick.revealed) return;
-    if (transition) return;
+  const [stage, setStage] = useState<Stage>(1);
+  const [index, setIndex] = useState(0);
 
-    const isCorrect = chosenId === r.correctId;
+  const [stage1Correct, setStage1Correct] = useState(0);
+  const [stage2Correct, setStage2Correct] = useState(0);
 
-    // reveal
-    setPick({ pickedId: chosenId, revealed: true });
+  const [locked, setLocked] = useState(false);
 
-    // counters update
-    if (isCorrect) {
-      setCorrectCount((c) => c + 1);
-      if (r.stage === "THREAT") setThreatCorrect((c) => c + 1);
-      if (r.stage === "NEUTRAL") setNeutralCorrect((c) => c + 1);
+  const startMsRef = useRef<number>(0);
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    setBenchmark(loadBenchmark());
+    startMsRef.current = performance.now();
+    const t = window.setInterval(() => {
+      setElapsedMs(performance.now() - startMsRef.current);
+    }, 200);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const totalPerStage = trials.length;
+  const current: Trial = trials[index];
+
+  const prompt =
+    stage === 1
+      ? "Заналхийлсэн (занал хийлсэн) утгатай үгийг сонгоно уу."
+      : "Энгийн (нейтрал) утгатай үгийг сонгоно уу.";
+
+  // 2 “зураг” байрлал санамсаргүй солигдоно
+  const layout = useMemo(() => {
+    const threatOnLeft = Math.random() < 0.5;
+    if (threatOnLeft) {
+      return {
+        leftWord: current.threatWord,
+        leftImg: current.threatImg,
+        rightWord: current.neutralWord,
+        rightImg: current.neutralImg,
+        correctSide: stage === 1 ? ("left" as const) : ("right" as const),
+      };
     }
+    return {
+      leftWord: current.neutralWord,
+      leftImg: current.neutralImg,
+      rightWord: current.threatWord,
+      rightImg: current.threatImg,
+      correctSide: stage === 1 ? ("right" as const) : ("left" as const),
+    };
+  }, [current, stage, index]);
 
-    // after reveal -> next
+  const totalQuestions = totalPerStage * 2;
+
+  const finish = () => {
+    const endMs = performance.now();
+    const totalTimeMs = Math.max(0, Math.round(endMs - startMsRef.current));
+
+    const totalCorrect = stage1Correct + stage2Correct;
+    const accuracyPct = (totalCorrect / totalQuestions) * 100;
+
+    const b = benchmark ?? loadBenchmark();
+    const deltaAccuracyPct = accuracyPct - b.targetAccuracyPct;
+    const deltaTimeMs = b.targetTimeMs - totalTimeMs;
+
+    const result: TestResult = {
+      id: uuid(),
+      createdAtIso: new Date().toISOString(),
+
+      totalTimeMs,
+      totalCorrect,
+      totalQuestions,
+      accuracyPct,
+
+      stage1Correct,
+      stage1Questions: totalPerStage,
+      stage2Correct,
+      stage2Questions: totalPerStage,
+
+      benchmarkAccuracyPct: b.targetAccuracyPct,
+      benchmarkTimeMs: b.targetTimeMs,
+      deltaAccuracyPct,
+      deltaTimeMs,
+    };
+
+    addToHistory(result);
+    sessionStorage.setItem("tn_last_result_v1", JSON.stringify(result));
+    router.push("/result");
+  };
+
+  const onAnswered = (correct: boolean) => {
+    if (locked) return;
+    setLocked(true);
+
+    if (stage === 1) setStage1Correct((x) => x + (correct ? 1 : 0));
+    else setStage2Correct((x) => x + (correct ? 1 : 0));
+
+    // feedback харагдаад дараагийн үг рүү шилжинэ
     window.setTimeout(() => {
-      const nextIndex = i + 1;
+      setLocked(false);
 
-      // still has more rounds
-      if (nextIndex < total) {
-        // Stage 1 -> Stage 2 transition (exact boundary)
-        if (i === stage1EndIndex) {
-          setTransition({
-            title: "Stage 1 дууслаа",
-            subtitle: "Stage 2: Энгийн (нейтраль) утгатай үгийг олох гэж байна",
-          });
+      const isLastInStage = index === trials.length - 1;
 
-          // reset pick immediately so next stage starts clean
-          setPick({ pickedId: null, revealed: false });
-
-          window.setTimeout(() => {
-            setTransition(null);
-            setI(nextIndex);
-          }, 1200);
-
-          return;
-        }
-
-        // normal next question
-        setI(nextIndex);
-        setPick({ pickedId: null, revealed: false });
+      if (!isLastInStage) {
+        setIndex((x) => x + 1);
         return;
       }
 
-      // finish
-      const end = performance.now();
-      const totalMs = Math.max(0, Math.round(end - startRef.current));
+      // stage дууссан
+      if (stage === 1) {
+        setStage(2);
+        setIndex(0);
+        return;
+      }
 
-      const finalCorrect = isCorrect ? correctCount + 1 : correctCount;
+      // stage2 дууссан => finalize
+      finish();
+    }, 850);
+  };
 
-      const finalThreatCorrect =
-        r.stage === "THREAT" && isCorrect ? threatCorrect + 1 : threatCorrect;
-
-      const finalNeutralCorrect =
-        r.stage === "NEUTRAL" && isCorrect ? neutralCorrect + 1 : neutralCorrect;
-
-      const result: TestResult = {
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        totalMs,
-        correct: finalCorrect,
-        total,
-        accuracy: total > 0 ? finalCorrect / total : 0,
-        stageBreakdown: {
-          threat: { correct: finalThreatCorrect, total: threatTotal },
-          neutral: { correct: finalNeutralCorrect, total: neutralTotal },
-        },
-      };
-
-      addHistory(result);
-      sessionStorage.setItem("mk_last_result_v1", JSON.stringify(result));
-      router.push("/result");
-    }, 800);
+  if (!benchmark) {
+    return <div className="card">Ачааллаж байна…</div>;
   }
-
-  if (!r) {
-    return (
-      <main className={styles.wrap}>
-        <h1 className={styles.h1}>Тест</h1>
-        <p className={styles.prompt}>Асуулт олдсонгүй. Датагаа шалгана уу.</p>
-      </main>
-    );
-  }
-
-  const isStage1 = i <= stage1EndIndex;
-  const stageLabel = isStage1 ? "Stage 1/2" : "Stage 2/2";
-
-  const leftState =
-    !pick.revealed
-      ? "idle"
-      : r.left.id === r.correctId
-      ? "correct"
-      : pick.pickedId === r.left.id
-      ? "wrong"
-      : "idle";
-
-  const rightState =
-    !pick.revealed
-      ? "idle"
-      : r.right.id === r.correctId
-      ? "correct"
-      : pick.pickedId === r.right.id
-      ? "wrong"
-      : "idle";
 
   return (
-    <main className={styles.wrap}>
-      {transition && (
-        <div className={styles.overlay} role="dialog" aria-live="polite">
-          <div className={styles.overlayCard}>
-            <div className={styles.overlayTitle}>{transition.title}</div>
-            {transition.subtitle && (
-              <div className={styles.overlaySubtitle}>{transition.subtitle}</div>
-            )}
-            <div className={styles.overlayHint}>Түр хүлээнэ үү…</div>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.top}>
-        <div>
-          <h1 className={styles.h1}>Тест</h1>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", opacity: 0.85 }}>
-            <span>{stageLabel}</span>
-            <span>•</span>
-            <span>
-              Асуулт: {i + 1}/{total}
-            </span>
-            <span>•</span>
-            <span>Зөв: {correctCount}</span>
-          </div>
-        </div>
+    <div>
+      <ProgressHeader stage={stage} index={index} total={trials.length} elapsedMs={elapsedMs} />
+      <TwoChoiceRound
+        prompt={prompt}
+        leftWord={layout.leftWord}
+        leftImg={layout.leftImg}
+        rightWord={layout.rightWord}
+        rightImg={layout.rightImg}
+        correctSide={layout.correctSide}
+        onAnswered={onAnswered}
+      />
+      <div className="muted" style={{ marginTop: 10 }}>
+        Зөв: {stage1Correct + stage2Correct} / {totalQuestions}
       </div>
-
-      <div style={{ margin: "12px 0 10px" }}>
-        <ProgressBar value={i} max={total} />
-      </div>
-
-      <p className={styles.prompt}>{r.prompt}</p>
-
-      <div className={styles.grid}>
-        <ChoiceCard
-          label={r.left.word}
-          disabled={pick.revealed || !!transition}
-          state={leftState as any}
-          onClick={() => handlePick(r.left.id)}
-        />
-        <ChoiceCard
-          label={r.right.word}
-          disabled={pick.revealed || !!transition}
-          state={rightState as any}
-          onClick={() => handlePick(r.right.id)}
-        />
-      </div>
-
-      {pick.revealed && (
-        <div className={styles.feedback}>
-          {pick.pickedId === r.correctId ? "✅ Зөв!" : "❌ Буруу."} Зөв хариулт:{" "}
-          <b>{r.correctId === r.left.id ? r.left.word : r.right.word}</b>
-        </div>
-      )}
-    </main>
+    </div>
   );
 }
