@@ -1,0 +1,28 @@
+.card{
+  width: 100%;
+  min-height: 160px;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  cursor: pointer;
+  transition: transform .08s ease, border-color .08s ease;
+  padding: 18px;
+}
+.card:hover{ transform: translateY(-1px); border-color: #cbd5e1; }
+.card:disabled{ opacity: .7; cursor: not-allowed; }
+
+.word{
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height: 100%;
+}
+
+.correct{ border-color: #22c55e; }
+.wrong{ border-color: #ef4444; }
+.reveal{ border-color: #3b82f6; }
+.idle{}
