@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TwoChoiceCard from "../../components/TwoChoiceCard";
 import { NEUTRAL_QUESTIONS, THREAT_QUESTIONS } from "../../lib/questions";
+import { shuffle } from "../../lib/scoring";
 import styles from "../../styles/Test.module.css";
 
 type Stage = "threat" | "neutral";
@@ -11,20 +12,24 @@ type Stage = "threat" | "neutral";
 export default function TestPage() {
   const router = useRouter();
 
+  // ✅ Threat болон Neutral тус тусдаа random (shuffle)
   const stages = useMemo(() => {
+    const threatRandom = shuffle(THREAT_QUESTIONS);
+    const neutralRandom = shuffle(NEUTRAL_QUESTIONS);
+
     return [
-      { key: "threat" as Stage, title: "1-р үе шат: Занал үг" , questions: THREAT_QUESTIONS },
-      { key: "neutral" as Stage, title: "2-р үе шат: Энгийн үг", questions: NEUTRAL_QUESTIONS },
+      { key: "threat" as Stage, title: "1-р үе шат: Занал үг", questions: threatRandom },
+      { key: "neutral" as Stage, title: "2-р үе шат: Энгийн үг", questions: neutralRandom },
     ];
   }, []);
 
-  const totalQuestions = stages.reduce((acc, s) => acc + s.questions.length, 0);
+  const totalQuestions = useMemo(
+    () => stages.reduce((acc, s) => acc + s.questions.length, 0),
+    [stages]
+  );
 
   const [stageIndex, setStageIndex] = useState(0);
   const [qIndex, setQIndex] = useState(0);
-
-  const [selected, setSelected] = useState<"left" | "right" | null>(null);
-  const [locked, setLocked] = useState(false);
 
   const [threatCorrect, setThreatCorrect] = useState(0);
   const [neutralCorrect, setNeutralCorrect] = useState(0);
@@ -32,49 +37,19 @@ export default function TestPage() {
   const startedAtRef = useRef<number | null>(null);
 
   const stage = stages[stageIndex];
-  const q = stage.questions[qIndex];
+  const q = stage?.questions?.[qIndex];
 
   const answeredCount =
     stages.slice(0, stageIndex).reduce((acc, s) => acc + s.questions.length, 0) + qIndex;
 
-  const onPick = (side: "left" | "right") => {
-    if (locked) return;
-
-    if (startedAtRef.current === null) startedAtRef.current = performance.now();
-
-    setSelected(side);
-    setLocked(true);
-
-    const isCorrect = side === q.correct;
-    if (stage.key === "threat" && isCorrect) setThreatCorrect((v) => v + 1);
-    if (stage.key === "neutral" && isCorrect) setNeutralCorrect((v) => v + 1);
-  };
-
-  const goNext = () => {
-    // next question within stage
-    if (qIndex + 1 < stage.questions.length) {
-      setQIndex(qIndex + 1);
-      setSelected(null);
-      setLocked(false);
-      return;
-    }
-
-    // next stage
-    if (stageIndex + 1 < stages.length) {
-      setStageIndex(stageIndex + 1);
-      setQIndex(0);
-      setSelected(null);
-      setLocked(false);
-      return;
-    }
-
-    // finish
+  const finishTest = () => {
     const ended = performance.now();
-    const started = startedAtRef.current ?? ended; // if no answers, 0
+    const started = startedAtRef.current ?? ended;
     const totalMs = Math.max(0, Math.round(ended - started));
 
-    const threatTotal = THREAT_QUESTIONS.length;
-    const neutralTotal = NEUTRAL_QUESTIONS.length;
+    const threatTotal = stages[0]?.questions.length ?? 0;
+    const neutralTotal = stages[1]?.questions.length ?? 0;
+
     const overallCorrect = threatCorrect + neutralCorrect;
     const overallTotal = threatTotal + neutralTotal;
     const accuracyPct = overallTotal ? Math.round((overallCorrect / overallTotal) * 100) : 0;
@@ -92,11 +67,43 @@ export default function TestPage() {
     router.push("/result");
   };
 
+  const goNext = () => {
+    // next question within stage
+    if (qIndex + 1 < stage.questions.length) {
+      setQIndex(qIndex + 1);
+      return;
+    }
+
+    // next stage
+    if (stageIndex + 1 < stages.length) {
+      setStageIndex(stageIndex + 1);
+      setQIndex(0);
+      return;
+    }
+
+    // finish
+    finishTest();
+  };
+
+  // ✅ Дармагц шууд next
+  const onPick = (side: "left" | "right") => {
+    if (!q) return;
+
+    if (startedAtRef.current === null) startedAtRef.current = performance.now();
+
+    const isCorrect = side === q.correct;
+    if (stage.key === "threat" && isCorrect) setThreatCorrect((v) => v + 1);
+    if (stage.key === "neutral" && isCorrect) setNeutralCorrect((v) => v + 1);
+
+    // ✅ Шууд дараагийн асуулт руу
+    goNext();
+  };
+
   if (!q) {
     return (
       <div className="card">
         <h1>Асуулт олдсонгүй</h1>
-        <p>questions.ts доторх өгөгдлөө шалгана уу.</p>
+        <p>lib/questions.ts доторх асуултууд/зурагны замаа шалгана уу.</p>
       </div>
     );
   }
@@ -115,27 +122,11 @@ export default function TestPage() {
       <TwoChoiceCard
         leftSrc={q.leftImage}
         rightSrc={q.rightImage}
-        disabled={locked}
-        selected={selected}
-        correct={locked ? q.correct : null}
+        disabled={false}
         onPick={onPick}
       />
 
-      <div className={styles.footer}>
-        {!locked ? (
-          <div className={styles.hint}>Нэгийг сонгоно уу.</div>
-        ) : (
-          <div className={styles.feedback}>
-            {selected === q.correct ? "✅ Зөв!" : "❌ Буруу. Зөв хариулт тодорсон."}
-          </div>
-        )}
-
-        <button className="btn primary" onClick={goNext} disabled={!locked}>
-          {stageIndex === stages.length - 1 && qIndex === stage.questions.length - 1
-            ? "Дуусгах"
-            : "Дараах"}
-        </button>
-      </div>
+      {/* Одоо feedback/Next button хэрэггүй, учир нь шууд шилжинэ */}
     </div>
   );
 }
