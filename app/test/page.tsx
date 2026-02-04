@@ -3,25 +3,33 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TwoChoiceCard from "../../components/TwoChoiceCard";
-import { NEUTRAL_QUESTIONS, THREAT_QUESTIONS } from "../../lib/questions";
+//import { NEUTRAL_QUESTIONS, THREAT_QUESTIONS } from "../../lib/questions";
 import { shuffle } from "../../lib/scoring";
+import { getNeutralQuestions, getThreatQuestions } from "../../lib/questionsFromFolders";
+
 import styles from "../../styles/Test.module.css";
 
 type Stage = "threat" | "neutral";
+
+
 
 export default function TestPage() {
   const router = useRouter();
 
   // ✅ Threat болон Neutral тус тусдаа random (shuffle)
-  const stages = useMemo(() => {
-    const threatRandom = shuffle(THREAT_QUESTIONS);
-    const neutralRandom = shuffle(NEUTRAL_QUESTIONS);
+  
 
-    return [
-      { key: "threat" as Stage, title: "1-р үе шат: Занал үг", questions: threatRandom },
-      { key: "neutral" as Stage, title: "2-р үе шат: Энгийн үг", questions: neutralRandom },
-    ];
-  }, []);
+  const stages = useMemo(() => {
+  const threatRandom = getThreatQuestions();
+  const neutralRandom = getNeutralQuestions();
+
+  return [
+    { key: "threat" as Stage, title: "1-р үе шат: Занал үг", questions: threatRandom },
+    { key: "neutral" as Stage, title: "2-р үе шат: Энгийн үг", questions: neutralRandom },
+  ];
+}, []);
+
+  
 
   const totalQuestions = useMemo(
     () => stages.reduce((acc, s) => acc + s.questions.length, 0),
