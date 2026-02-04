@@ -1,4 +1,4 @@
-import type { Question, StageType } from "./types";
+import type { Question } from "./types";
 import manifest from "./generated/imageManifest.json";
 
 function shuffle<T>(arr: T[]) {
@@ -10,44 +10,53 @@ function shuffle<T>(arr: T[]) {
   return a;
 }
 
-function chunkPairs(images: string[]) {
-  // 2 зураг = 1 асуулт (pair)
-  const pairs: Array<[string, string]> = [];
-  for (let i = 0; i + 1 < images.length; i += 2) {
-    pairs.push([images[i], images[i + 1]]);
+/**
+ * Pairing rule:
+ * - 1 threat image + 1 neutral image = 1 question-pair base
+ * - Left/right position randomized per question
+ * - We generate two sets:
+ *   - Threat stage questions: correct side = where threat is
+ *   - Neutral stage questions: correct side = where neutral is
+ */
+export function buildTwoStageQuestions() {
+  const threat = shuffle(manifest.threat ?? []);
+  const neutral = shuffle(manifest.neutral ?? []);
+
+  const pairCount = Math.min(threat.length, neutral.length);
+
+  const threatQuestions: Question[] = [];
+  const neutralQuestions: Question[] = [];
+
+  for (let i = 0; i < pairCount; i++) {
+    const tImg = threat[i];
+    const nImg = neutral[i];
+
+    // randomize placement
+    const threatOnLeft = Math.random() < 0.5;
+
+    const leftImage = threatOnLeft ? tImg : nImg;
+    const rightImage = threatOnLeft ? nImg : tImg;
+
+    // stage1: pick THREAT
+    threatQuestions.push({
+      id: `threat_${i + 1}`,
+      stage: "threat",
+      prompt: "Занал хийсэн утгатай үгийг ол",
+      leftImage,
+      rightImage,
+      correct: threatOnLeft ? "left" : "right",
+    });
+
+    // stage2: pick NEUTRAL (same images, same positions, but correct flips)
+    neutralQuestions.push({
+      id: `neutral_${i + 1}`,
+      stage: "neutral",
+      prompt: "Энгийн утгатай үгийг ол",
+      leftImage,
+      rightImage,
+      correct: threatOnLeft ? "right" : "left",
+    });
   }
-  return pairs;
-}
 
-function buildStageQuestions(stage: StageType, images: string[], prompt: string): Question[] {
-  const shuffled = shuffle(images);
-  const pairs = chunkPairs(shuffled);
-
-  return pairs.map(([left, right], idx) => {
-    const correct = Math.random() < 0.5 ? "left" : "right"; // зөв тал random
-    return {
-      id: `${stage}_${idx + 1}`,
-      stage,
-      prompt,
-      leftImage: left,
-      rightImage: right,
-      correct,
-    };
-  });
-}
-
-export function getThreatQuestions(): Question[] {
-  return buildStageQuestions(
-    "threat",
-    manifest.threat ?? [],
-    "Занал хийсэн утгатай үгийг ол"
-  );
-}
-
-export function getNeutralQuestions(): Question[] {
-  return buildStageQuestions(
-    "neutral",
-    manifest.neutral ?? [],
-    "Энгийн утгатай үгийг ол"
-  );
+  return { threatQuestions, neutralQuestions, pairCount };
 }

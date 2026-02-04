@@ -3,33 +3,31 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TwoChoiceCard from "../../components/TwoChoiceCard";
-//import { NEUTRAL_QUESTIONS, THREAT_QUESTIONS } from "../../lib/questions";
-import { shuffle } from "../../lib/scoring";
-import { getNeutralQuestions, getThreatQuestions } from "../../lib/questionsFromFolders";
-
+import { buildTwoStageQuestions } from "../../lib/questionsFromFolders";
 import styles from "../../styles/Test.module.css";
 
 type Stage = "threat" | "neutral";
 
-
-
 export default function TestPage() {
   const router = useRouter();
 
-  // ✅ Threat болон Neutral тус тусдаа random (shuffle)
-  
-
+  // ✅ build two-stage questions from folders (1 threat + 1 neutral each question)
   const stages = useMemo(() => {
-  const threatRandom = getThreatQuestions();
-  const neutralRandom = getNeutralQuestions();
+    const { threatQuestions, neutralQuestions, pairCount } = buildTwoStageQuestions();
 
-  return [
-    { key: "threat" as Stage, title: "1-р үе шат: Занал үг", questions: threatRandom },
-    { key: "neutral" as Stage, title: "2-р үе шат: Энгийн үг", questions: neutralRandom },
-  ];
-}, []);
-
-  
+    return [
+      {
+        key: "threat" as Stage,
+        title: `1-р үе шат: Занал үг (${pairCount} асуулт)`,
+        questions: threatQuestions,
+      },
+      {
+        key: "neutral" as Stage,
+        title: `2-р үе шат: Энгийн үг (${pairCount} асуулт)`,
+        questions: neutralQuestions,
+      },
+    ];
+  }, []);
 
   const totalQuestions = useMemo(
     () => stages.reduce((acc, s) => acc + s.questions.length, 0),
@@ -93,7 +91,7 @@ export default function TestPage() {
     finishTest();
   };
 
-  // ✅ Дармагц шууд next
+  // ✅ answer -> immediately next
   const onPick = (side: "left" | "right") => {
     if (!q) return;
 
@@ -103,7 +101,6 @@ export default function TestPage() {
     if (stage.key === "threat" && isCorrect) setThreatCorrect((v) => v + 1);
     if (stage.key === "neutral" && isCorrect) setNeutralCorrect((v) => v + 1);
 
-    // ✅ Шууд дараагийн асуулт руу
     goNext();
   };
 
@@ -111,7 +108,10 @@ export default function TestPage() {
     return (
       <div className="card">
         <h1>Асуулт олдсонгүй</h1>
-        <p>lib/questions.ts доторх асуултууд/зурагны замаа шалгана уу.</p>
+        <p>
+          <b>public/images/threat</b> ба <b>public/images/neutral</b> дотор зураг байгаа эсэхээ шалгаарай.
+          (Мөн build үед manifest үүсэх ёстой)
+        </p>
       </div>
     );
   }
@@ -127,14 +127,7 @@ export default function TestPage() {
 
       <p className={styles.prompt}>{q.prompt}</p>
 
-      <TwoChoiceCard
-        leftSrc={q.leftImage}
-        rightSrc={q.rightImage}
-        disabled={false}
-        onPick={onPick}
-      />
-
-      {/* Одоо feedback/Next button хэрэггүй, учир нь шууд шилжинэ */}
+      <TwoChoiceCard leftSrc={q.leftImage} rightSrc={q.rightImage} onPick={onPick} />
     </div>
   );
 }
