@@ -172,3 +172,21 @@ h3{margin:0 0 8px 0;font-size:16px}
   .choices{grid-template-columns:1fr}
   .choice img{height:220px}
 }
+
+.nav { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.navlink{
+  text-decoration:none;
+  color:var(--muted);
+  border:1px solid var(--border);
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(255,255,255,.03);
+  font-size:13px;
+}
+.navlink:hover{border-color:rgba(255,255,255,.18); transform:translateY(-1px)}
+.navlink.active{
+  color:var(--text);
+  border-color:rgba(106,166,255,.35);
+  background:rgba(106,166,255,.12);
+}
+

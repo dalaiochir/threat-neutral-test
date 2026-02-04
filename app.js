@@ -13,6 +13,15 @@ const BENCHMARK = {
   targetTimeMs: 30_000        // зорилтот хугацаа (жишээ: 30 сек)
 };
 
+const NAV_CONFIG = {
+  autoOpenHistoryOnFinish: true, // true бол тест дуусмагц history.html руу автоматаар орно
+  autoOpenDelayMs: 700          // хэдэн ms-ийн дараа шилжих вэ
+};
+
+//Хэрвээ автоматаар шилжихийг түр унтраамаар байвал
+//autoOpenHistoryOnFinish: false
+
+
 // Асуулт бүр: { prompt, options:[{img, caption?},{img, caption?}], correctIndex }
 const STAGES = [
   {
@@ -91,6 +100,8 @@ const btnStart = $("#btnStart");
 const btnRestart = $("#btnRestart");
 const btnNext = $("#btnNext");
 const btnStartAgain = $("#btnStartAgain");
+const btnOpenHistory = $("#btnOpenHistory");
+
 
 const tagStage = $("#tagStage");
 const tagProgress = $("#tagProgress");
@@ -117,6 +128,11 @@ const btnExport = $("#btnExport");
 init();
 
 function init(){
+
+  btnOpenHistory?.addEventListener("click", () => {
+  window.location.href = "./history.html";
+});
+
   state.totalQuestions = STAGES.reduce((sum,s)=>sum + s.questions.length, 0);
   STAGES.forEach(s=>{
     state.stageCorrect[s.id] = 0;
@@ -255,10 +271,20 @@ function finishTest(){
     parts.push(`Өмнөх best-тэй харьцуулахад: хугацаа ${faster ? "сайжирсан ⬆️" : "сайжраагүй"}, зөвийн хувь ${higher ? "сайжирсан ⬆️" : "сайжраагүй"}.`);
   }
 
+    // Auto-open History page
+  
+
+
   compareText.textContent = parts.join(" ");
 
   screenTest.classList.add("hidden");
   screenResult.classList.remove("hidden");
+
+  if (NAV_CONFIG.autoOpenHistoryOnFinish) {
+    setTimeout(() => {
+      window.location.href = "./history.html";
+    }, NAV_CONFIG.autoOpenDelayMs);
+  }
 }
 
 // ==== RENDER QUESTION ====
