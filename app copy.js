@@ -24,14 +24,14 @@ const STAGES = [
         prompt: "Заналхийлсэн утгатай үг аль нь вэ?",
         options: [
           { img: "./assets/threat_1_a.jpg", caption: "Сонголт A" },
-          { img: "./assets/threat_2_a.jpg", caption: "Сонголт B" }
+          { img: "./assets/threat_1_b.jpg", caption: "Сонголт B" }
         ],
-        correctIndex: 1
+        correctIndex: 0
       },
       {
         prompt: "Заналхийлсэн утгатай үг аль нь вэ?",
         options: [
-          { img: "./assets/threat_1_b.jpg", caption: "Сонголт A" },
+          { img: "./assets/threat_2_a.jpg", caption: "Сонголт A" },
           { img: "./assets/threat_2_b.jpg", caption: "Сонголт B" }
         ],
         correctIndex: 1
@@ -46,18 +46,18 @@ const STAGES = [
       {
         prompt: "Энгийн утгатай үг аль нь вэ?",
         options: [
-          { img: "./assets/neutral_3_a.jpg", caption: "Сонголт A" },
-          { img: "./assets/neutral_3_b.jpg", caption: "Сонголт B" }
+          { img: "./assets/neutral_1_a.jpg", caption: "Сонголт A" },
+          { img: "./assets/neutral_1_b.jpg", caption: "Сонголт B" }
         ],
-        correctIndex: 0
+        correctIndex: 1
       },
       {
         prompt: "Энгийн утгатай үг аль нь вэ?",
         options: [
-          { img: "./assets/neutral_4_a.jpg", caption: "Сонголт A" },
-          { img: "./assets/neutral_4_b.jpg", caption: "Сонголт B" }
+          { img: "./assets/neutral_2_a.jpg", caption: "Сонголт A" },
+          { img: "./assets/neutral_2_b.jpg", caption: "Сонголт B" }
         ],
-        correctIndex: 1
+        correctIndex: 0
       }
     ]
   }
